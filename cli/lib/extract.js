@@ -94,6 +94,30 @@ const getNav = async ({ contents, release }) => {
   }
 }
 
+const writeChangelog = async ({ release, nav, cwd, srcPath, contentPath }) => {
+  const title = 'Changelog'
+  const changelog = await gh.getFile({ ref: release.branch, path: srcPath })
+
+  await fs.writeFile(
+    join(cwd, contentPath + '.md'),
+    Transform.sync(changelog.toString(), {
+      release,
+      path: contentPath,
+      frontmatter: {
+        github_path: srcPath,
+        title,
+      },
+    }),
+    'utf-8'
+  )
+
+  nav.children[nav.children.length - 1].children.push({
+    title,
+    url: `${release.url}/${contentPath}`,
+    description: 'Changelog notes for each version',
+  })
+}
+
 const resolveRelease = async (
   { resolved: current, ...release },
   { force, prerelease }
@@ -194,6 +218,14 @@ const unpackRelease = async (
       return path
     })
   )
+
+  await writeChangelog({
+    release,
+    nav,
+    cwd,
+    srcPath: 'CHANGELOG.md',
+    contentPath: posix.join('using-npm', 'changelog'),
+  })
 
   log.info(release.id, `${[...files, ...indexes].length} files`)
 
